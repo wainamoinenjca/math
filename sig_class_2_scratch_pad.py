@@ -1,131 +1,141 @@
 import itertools
 import copy
 
-def createAdjList(sig):
-    adjList = []
+
+def createAdjList(sig: list[int]) -> list['Node']:
+    adjList: list[Node] = []
     indexCounter = sum(sig) - 1 #indices = 0,1,...,numNodes -1
     for i in range(0, len(sig)):
         for j in range(0, sig[i]):
-            adjList.append(Node(i+1, indexCounter)) #[2,1] -> [[1,[]],[1,[]],[2,[]]] adjList[x][0] = num cnctns, adjList[x][1] = indices cnctns
+            adjList.append(Node(i+1, indexCounter))
+            #[2,1] -> [[1,[]],[1,[]],[2,[]]] adjList[x][0] = num cnctns,
+            # adjList[x][1] = indices cnctns
             indexCounter -= 1
     adjList.reverse() #reverse order for easier minNecStr construction
-    #print(adjList)
+    # print(adjList)
     return adjList
-    
-def edgeCalc(sig):
+
+def edgeCalc(sig: list[int]) -> float:
     index = 1
     edgeCount = 0
     for i in sig:
         edgeCount += i * index
         index += 1
     return edgeCount/2
-    
-def connect(sig, i, j):
-    #add check to ensure both are not fully connected
-    #print("in connect: sig.adjList = ")
-    #for n in sig.adjList:
-    #    n.print()
-    #iInd = sig.adjList[i].index
-    #jInd = sig.adjList[j].index
-    #print("connecting nodes ", i.index, " and ", j.index)
-    sig.adjList[i.index].neighbors.append(j) #mutually add i and j to each other's cnctns indices
-    sig.adjList[j.index].neighbors.append(i) #i and j = starting 0 enumerated labels for nodes 
+
+def connect(sig: 'Signature', i: 'Node', j: 'Node') -> 'Signature':
+    # add check to ensure both are not fully connected
+    # print("in connect: sig.adjList = ")
+    # for n in sig.adjList:
+    #     n.print()
+    # iInd = sig.adjList[i].index
+    # jInd = sig.adjList[j].index
+    # print("connecting nodes ", i.index, " and ", j.index)
+
+    # mutually add i and j to each other's cnctns indices
+    sig.adjList[i.index].neighbors.append(j)
+    # i and j = starting 0 enumerated labels for nodes
+    sig.adjList[j.index].neighbors.append(i)
     return sig
 
-    
-def genNbrCombinations(adjList, n):
-    #for a in adjList:
-    #    a.print()
-    #connect(adjList, 0, 1)
-    
+
+def genNbrCombinations(adjList: list['Node'], n: int) -> list[tuple['Node', ...]]:
+    # for a in adjList:
+    #     a.print()
+    # connect(adjList, 0, 1)
+
     a = list(itertools.combinations(adjList, n))
- #   for i in a:
- #       for j in i:
-#            j.print()
-#        print()
+    # for i in a:
+    #     for j in i:
+    #         j.print()
+    #     print()
     aSet = set(a)
- #   print("final set")
-#    for a in aSet:
-#        for b in a:
-#            b.print()
-#        print()
+    # print("final set")
+    # for a in aSet:
+    #     for b in a:
+    #        b.print()
+    #     print()
     return list(aSet)
-    
-def genNbrCombinationsNode(adjList, node):
+
+def genNbrCombinationsNode(adjList: list['Node'], node: 'Node') -> list[tuple['Node', ...]]:
     adjListCopy = copy.deepcopy(adjList)
     #for i in adjListCopy:
     #    if i.index == node.index:
     #        adjListCopy.remove(i)
-    adjListCopy = [i for i in adjListCopy if i.index != node.index and len(i.neighbors) < i.degree]
+    adjListCopy = [
+        i for i in adjListCopy
+        if i.index != node.index and len(i.neighbors) < i.degree
+    ]
     a = list(itertools.combinations(adjListCopy, node.numUnfilledNbrs()))
     aSet = set(a)
     return list(aSet)
-    
-class edgeList:
-    def __init__(self, edges):
-        self.edgeList = edges
-      
-    #Python bug? Try changing below def to '__hash' instead of '__hash__', still runs but doesn't reduce the list passed into 'set()' 
+
+class EdgeList(list):
+    def __init__(self, edges: list[list[int]]) -> None:
+        super().__init__(edges)
+
+    #Python bug? Try changing below def to '__hash' instead of '__hash__',
+    # still runs but doesn't reduce the list passed into 'set()'
     def __hash__(self):
-        return hash(tuple(self.edgeList))
-    
+        return hash(tuple(self))
+
 class Node:
-    def __init__(self, degree, index):
-        self.degree = degree
-        self.neighbors = []
-        self.index = index
-        
+    def __init__(self, degree: int, index: int) -> None:
+        self.degree: int = degree
+        self.neighbors: list['Node'] = []
+        self.index: int = index
+
     def __eq__(self, other):
         return self.degree == other.degree and self.neighbors == other.neighbors
-        
+
     def __hash__(self):
         return hash((self.degree, tuple(self.neighbors)))
-            
+
     def print(self):
         print("index = ", self.index, "degree = ", self.degree, ":", self.nbrIndexList())
-        
-    def numUnfilledNbrs(self):
+
+    def numUnfilledNbrs(self) -> int:
         return self.degree - len(self.neighbors)
-        
-    def nbrIndexList(self):
-        l = []
+
+    def nbrIndexList(self) -> list[int]:
+        l: list[int] = []
         for i in self.neighbors:
             l.append(i.index)
         return l
 class Signature:
-    def __init__(self, sig):
-        self.sig = sig
-        self.numEdges = edgeCalc(sig)
-        self.numNodes = sum(sig)
-        self.adjList = createAdjList(sig)
-        
-    def completionCheck(self):
+    def __init__(self, sig: list[int]) -> None:
+        self.sig: list[int] = sig
+        self.numEdges: float = edgeCalc(sig)
+        self.numNodes: int = sum(sig)
+        self.adjList: list[Node] = createAdjList(sig)
+
+    def completionCheck(self) -> bool:
         check = True
         for i in self.adjList:
             #print("CCeck: ind = ", i.index, " deg = ", i.degree, "nbrs = ", len(i.neighbors))
             if i.numUnfilledNbrs() != 0:
                 check = False
         return check
-    
-    def potentialNeighbors(self, node): #untested
+
+    def potentialNeighbors(self, node: Node) -> list[Node]:
         potentialNeighbors = copy.deepcopy(self.adjList)
-        remList = [node.index]
+        remList: list[int] = [node.index]
         #print("len PotentialNeighbors = ", len(potentialNeighbors))
         for i in potentialNeighbors:
-        #    i.print()
+            # i.print()
             if(len(i.neighbors) == i.degree):
                 remList.append(i.index)
-        #    else:
-        #        print(False)
-        #print("REMLIST AFTER FIRST PASS")
-        #for i in remList:
-        #    print(i)
+        #     else:
+        #         print(False)
+        # print("REMLIST AFTER FIRST PASS")
+        # for i in remList:
+        #     print(i)
         potentialNeighbors = [i for i in potentialNeighbors if i.index not in remList]
         #print("AFTER REMOVAL PASS")
         #for i in potentialNeighbors:
         #    i.print()
         return potentialNeighbors
-    
+
     def disconnectedGroupCheck(self): #untested
         check = False
         for i in self.adjList:
@@ -133,7 +143,7 @@ class Signature:
             if len(self.potentialNeighbors(i)) < i.numUnfilledNbrs():
                 check = True
         return check
-            
+
     def debug(self):
         print(self.sig)
         print("num Edges = ", self.numEdges)
@@ -143,35 +153,40 @@ class Signature:
 
     def genAllConfigs(self):
         workingSig = copy.deepcopy(self)
-        workingList = copy.deepcopy(workingSig.adjList)
-        completeCnxnLists = []
+        # workingList = copy.deepcopy(workingSig.adjList)
+        # completeCnxnLists = []
 
         retVals = self.iterate2(workingSig, [], [], 0)
         finalConfigSet = []
         for i in retVals[2]:
             #print("final configs, ", i)
-            finalConfigSet.append(edgeList(i))
-            
-        finalConfigSet = set(finalConfigSet)    
+            finalConfigSet.append(EdgeList(i))
+
+        finalConfigSet = set(finalConfigSet)
         for i in finalConfigSet:
             print("Final config set: ", i)
-        #while(True):    
+        # while(True):
         #    workingNode = workingList.pop(0)
-        #    nbrhdCombinations = genNbrCombinations(workingList, workingNode.numUnfilledNbrs())
+        #    nbrhdCombinations = genNbrCombinations(
+        #        workingList, workingNode.numUnfilledNbrs()
+        #     )
         #    cnxnList = []
 
- #           for potentialNbrCombination in nbrhdCombinations:
- #               self.connectToPotentialNbrs(workingNode, workingList, potentialNbrCombination, workingSig, cnxnList)
- #               #workingSig = copy.deepcopy(self)
+        #    for potentialNbrCombination in nbrhdCombinations:
+        #        self.connectToPotentialNbrs(
+        #            workingNode, workingList, potentialNbrCombination, workingSig,
+        #            cnxnList
+        #         )
+        #        #workingSig = copy.deepcopy(self)
 
- #               if workingSig.completionCheck == True:
- #                   print("Config Complete")
- #                   break
- #               elif workingSig.disconnectedGroupCheck == True:
- #                   print("Invalid Config")
- #                   break
- 
-    def identifyWorkingNode(self, workingSig):
+        #        if workingSig.completionCheck == True:
+        #            print("Config Complete")
+        #            break
+        #        elif workingSig.disconnectedGroupCheck == True:
+        #            print("Invalid Config")
+        #            break
+
+    def identifyWorkingNode(self, workingSig: 'Signature') -> int|None:
         #returns the index of the first node in workingSig with fewer neighbors than its degree would imply
         workingNode = None
         for i in workingSig.adjList:
@@ -181,14 +196,15 @@ class Signature:
                 #workingNode.print()
                 #print()
                 return workingNode.index
-     
-    def iterate2(self, workingSig, cnxnList, configList, level):
+
+    def iterate2(self, workingSig: 'Signature', cnxnList: list[list[int]],
+                configList: list[list[int]], level: int) -> tuple[bool, list[list[int]], list[list[int]]]:
         level = level + 1
         print("Entered iterate2, level = ", level)
         print("configList = ")
         for i in configList:
             print(i)
-        #depth first structure, paths are followed to the end until complete or disconnected, 
+        #depth first structure, paths are followed to the end until complete or disconnected,
         #then the next branching paths one level higher are checked
         graphComplete = False #turns true if all nodes in graph are connected
         dcdGroup = False #turns true if a disconnected Group of nodes is formed
@@ -214,7 +230,7 @@ class Signature:
             print("current workingSig")
             for i in workingSig.adjList:
                 i.print()
-            if comb == nbrhdCombinations[-1]: finalPotentialNbrhd = True 
+            if comb == nbrhdCombinations[-1]: finalPotentialNbrhd = True
             for node in comb:
                 connect(workingSig, wn, node) #connect working node with nodes in current potential nbrhd combination
                 crc.append([wn.index, node.index]) #add most recently created edge to current round connections
@@ -237,7 +253,7 @@ class Signature:
                     print("post delete edgeList")
                     workingSig.debug()
                     #crc = [] #reset currentRoundConnections after deleting from group
-            if dcdGroup: 
+            if dcdGroup:
                 if finalPotentialNbrhd == True: #if disconnectd group was formed and if last potential neighborhood to check
                     workingSig.deleteEdgeList(workingSig, crc) #TODO: testing this here, not sure if it works
                     return[False, [], configList] #return false and empty lists which we won't need
@@ -257,7 +273,7 @@ class Signature:
                 if retGraphValid == True:
                     configList.append(retCnxnList)
                 configList = configList + retConfigList #this was the hangup to get all configs returned. Now there are duplicates of valid figs
-                
+
                 if finalPotentialNbrhd == False: #if there are more neighborhoods to check on this level
                     print("No more potenialNbrhds, crc = ")
                     for i in crc:
@@ -273,7 +289,7 @@ class Signature:
                         print(i)
                     workingSig.deleteEdgeList(workingSig, crc) #undo currentRoundConnections to test other potential nbrhds
                     crc = [] #reset CurrentRoundConnections to test other neighborhoods
-                    if retGraphValid == True: 
+                    if retGraphValid == True:
                         configList = configList + retConfigList  #should probably be just cnfgLst = retConfgList
                 elif finalPotentialNbrhd == True:#if there are no more potential neighborhoods on this level
                     configList = configList + retConfigList
@@ -283,11 +299,11 @@ class Signature:
             #print("final ConfigList = ", i)
         print("END of iterate2")
         return[False, cnxnList + crc, configList]
-       
-            
+
+
     def iterate(self, workingSig, workingList, cnxnList):
         failCase = False
-        workingNode = None 
+        workingNode = None
         configList = []
         currentRoundConnections = []
         for i in workingSig.adjList:
@@ -323,7 +339,7 @@ class Signature:
                     currentRoundConnections = []
                 return [True, cnxnList + currentRoundConnections]
             elif workingSig.disconnectedGroupCheck() == True:
-                
+
                 print("invalid path, CRCs = ", currentRoundConnections)
                 workingSig.deleteEdgeList(workingSig, currentRoundConnections) #undo the most recent round of connections
                 print("POST DELETEEDGELIST")
@@ -348,8 +364,8 @@ class Signature:
                 workingSig = copy.deepcopy(self)
             currentRoundConnections = []
             #clear out currentRoundConnections here
-            
-            
+
+
     def deleteEdgeList(self, workingSig, edgeList):
         #expects a list of tuples of indices of nodes to which the edge connects (e.g. [[0,1], [0,2]] deletes edges between 0 and 1 and 0 and 2
         for edge in edgeList:
@@ -366,17 +382,17 @@ class Signature:
         for potentialNbr in nbrList:
             connect(workingSig, workingNode, potentialNbr)
             cnxnList.append([workingNode.index, potentialNbr.index])
-            
+
     def genConfigs(self, level):
         #almost there, works recursively to build a single config, now we just need to add a check for a completed or invalid config
         #and iterate through all possible nbrhdCombinations, then it should be actually fucking done
-        #also need to figure out how reconstruct valid configs from partial adj lists, try using a "connectionList" which gets passed back and 
+        #also need to figure out how reconstruct valid configs from partial adj lists, try using a "connectionList" which gets passed back and
         #appended to itself
-        #11/7/24 Okay, we've coded most of the above, just need to implement it properly. Now the innermost nested iteration will, upon a 
-        #successful completion check, add its current connections to cnxnList. We want to then return cnxnList to its immediate outer calling 
+        #11/7/24 Okay, we've coded most of the above, just need to implement it properly. Now the innermost nested iteration will, upon a
+        #successful completion check, add its current connections to cnxnList. We want to then return cnxnList to its immediate outer calling
         #level, add the returned cnxnList to the outer level's cnxnList and repeat that process until we reach level 0, where we will add it to
-        #the original nbrhdCombination cnxnList. After that, we want to add that final cnxnList to a list of valid configs, then continue to 
-        #iterate through all possible nbrhdCombinations. Should be done after that. 
+        #the original nbrhdCombination cnxnList. After that, we want to add that final cnxnList to a list of valid configs, then continue to
+        #iterate through all possible nbrhdCombinations. Should be done after that.
         print("Level = ", level)
         workingSig = copy.deepcopy(self)
         workingList = copy.deepcopy(workingSig.adjList)
@@ -392,7 +408,7 @@ class Signature:
             for j in i:
                 j.print()
             print()
-            
+
         for x in nbrhdCombinations:
             workingCombo = x
             for i in workingCombo:
@@ -404,7 +420,7 @@ class Signature:
                 for i in cnxnList:
                     print(i)
 
-            print("CNXN List len = ", len(cnxnList))
+            print("CNXN list len = ", len(cnxnList))
             if workingSig.completionCheck() == True: #tested, works
                 print ("Complete!")
                 #for i in workingCombo:
@@ -427,26 +443,31 @@ class Signature:
             returnInfo = workingSig.genConfigs(level) #assign result to variable to check and combine valid adjLists.
             if returnInfo[0] == True:
                 cnxnList = cnxnList + returnInfo[1]
-                
+
                 print("complete cnxnList:")
                 for i in cnxnList:
                     print(i)
                 completeCnxnLists.append(list(cnxnList))
                 cnxnList = []
 
-test = Signature([0,3,2]) #works
-test2 = Signature([1,3,1]) #doesn't work. Need to add a case for successful config creation with remaining combinations to check
-test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
-#connect(test, test.adjList[0],test.adjList[2])
-#for i in test.adjList:
-#    i.print()
-#test.deleteEdgeList(test, [[0,1],[0,2]])
-#for i in test.adjList:
-#    i.print()
-#test.debug()
-#print(test.adjList[0] == test.adjList[1])
-#genNbrCombinations(test.adjList, 3)
-#test.genConfigs(0)
-#test.genAllConfigs()
-#test2.genAllConfigs()
-test3.genAllConfigs()
+def main():
+    test = Signature([0,3,2]) #works
+    test2 = Signature([1,3,1]) #doesn't work. Need to add a case for successful config creation with remaining combinations to check
+    test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
+    #connect(test, test.adjList[0],test.adjList[2])
+    #for i in test.adjList:
+    #    i.print()
+    #test.deleteEdgeList(test, [[0,1],[0,2]])
+    #for i in test.adjList:
+    #    i.print()
+    #test.debug()
+    #print(test.adjList[0] == test.adjList[1])
+    #genNbrCombinations(test.adjList, 3)
+    #test.genConfigs(0)
+    #test.genAllConfigs()
+    #test2.genAllConfigs()
+    test3.genAllConfigs()
+
+
+if __name__ == '__main__':
+    main()
