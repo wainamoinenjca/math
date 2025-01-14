@@ -70,6 +70,7 @@ def genNbrCombinationsNode(adjList: list['Node'], node: 'Node') -> list[tuple['N
     aSet = set(a)
     return list(aSet)
 
+
 class EdgeList(list):
     def __init__(self, edges: list[list[int]]) -> None:
         super().__init__(edges)
@@ -77,7 +78,11 @@ class EdgeList(list):
     #Python bug? Try changing below def to '__hash' instead of '__hash__',
     # still runs but doesn't reduce the list passed into 'set()'
     def __hash__(self):
-        return hash(tuple(self))
+        tuples = []
+        for l in self:
+            tuples.append(tuple(l))
+        return hash(tuple(tuples))
+
 
 class Node:
     def __init__(self, degree: int, index: int) -> None:
@@ -102,6 +107,8 @@ class Node:
         for i in self.neighbors:
             l.append(i.index)
         return l
+
+
 class Signature:
     def __init__(self, sig: list[int]) -> None:
         self.sig: list[int] = sig
