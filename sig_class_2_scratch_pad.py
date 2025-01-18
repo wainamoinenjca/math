@@ -61,14 +61,52 @@ def genNbrCombinationsNode(adjList, node):
     aSet = set(a)
     return list(aSet)
     
+def removeEdgeListCopies(edgeLists):
+    #print("len edgeLists = ", len(edgeLists))
+    #print("in RELC:, pre processing = ")
+    #for i in edgeLists:
+    #    i.print()
+    remList = [False] * (len(edgeLists))
+    for i in range(0, len(edgeLists) - 1):
+        for j in range (i + 1, len(edgeLists)):
+            if edgeLists[i].sameListDifferentOrderCheck(edgeLists[j]):
+                #print(i, j, "match")
+                remList[j] = True
+    #for i in range(len(remList)):
+    #    print(i, remList[i])
+
+    #[main_list[i] for i in range(len(bool_list)) if not bool_list[i]]
+    edgeLists = [edgeLists[i] for i in range(len(edgeLists)) if not remList[i]]
+    #print("in RELC:, final list = ")
+    #for i in edgeLists:
+    #    i.print()
+    
+    return edgeLists
+    
 class edgeList:
     def __init__(self, edges):
         self.edgeList = edges
-      
-    #Python bug? Try changing below def to '__hash' instead of '__hash__', still runs but doesn't reduce the list passed into 'set()' 
+        
+    def print(self):
+        for i in self.edgeList:
+            print(i)
+        print()    
+    
     def __hash__(self):
         return hash(tuple(self.edgeList))
-    
+
+    def sameListDifferentOrderCheck(self, other):
+        selfCopy = copy.deepcopy(self.edgeList)
+        otherCopy = copy.deepcopy(other.edgeList)
+        differences = [i for i in selfCopy if i not in otherCopy]
+        #for i in differences:
+        #    print("diffs: ", i)
+                    
+        if len(differences) == 0:
+            return True
+        else:
+            return False
+            
 class Node:
     def __init__(self, degree, index):
         self.degree = degree
@@ -151,10 +189,14 @@ class Signature:
         for i in retVals[2]:
             #print("final configs, ", i)
             finalConfigSet.append(edgeList(i))
-            
-        finalConfigSet = set(finalConfigSet)    
+            #finalConfigSet.append(i)
+                    
+        finalConfigSet = removeEdgeListCopies(finalConfigSet)
+        #finalConfigSet = set(finalConfigSet)  
+        
         for i in finalConfigSet:
-            print("Final config set: ", i)
+            print("Final config set: ")
+            i.print()
         #while(True):    
         #    workingNode = workingList.pop(0)
         #    nbrhdCombinations = genNbrCombinations(workingList, workingNode.numUnfilledNbrs())
@@ -435,7 +477,7 @@ class Signature:
                 cnxnList = []
 
 test = Signature([0,3,2]) #works
-test2 = Signature([1,3,1]) #doesn't work. Need to add a case for successful config creation with remaining combinations to check
+test2 = Signature([1,3,1]) #works but returns two isomorphic configs
 test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
 #connect(test, test.adjList[0],test.adjList[2])
 #for i in test.adjList:
