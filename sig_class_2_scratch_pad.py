@@ -1,5 +1,6 @@
 import itertools
 import copy
+from collections import Counter
 
 def createAdjList(sig):
     adjList = []
@@ -83,6 +84,20 @@ def removeEdgeListCopies(edgeLists):
     
     return edgeLists
     
+def genSwappablePairs(groupList):
+    pairCombinationsByDegree = []
+    for i in groupList:
+        swapPairs = itertools.combinations(i, 2)
+        pairCombinationsByDegree.append(swapPairs)
+
+    for i in pairCombinationsByDegree:
+        for j in i:
+            for k in j:
+                k.print()
+            print()
+            
+    return pairCombinationsByDegree
+    
 class edgeList:
     def __init__(self, edges):
         self.edgeList = edges
@@ -106,6 +121,28 @@ class edgeList:
             return True
         else:
             return False
+            
+    def swapIndices(self, firstIndex, secondIndex):
+        for i in self.edgList:
+            if i[0] == firstIndex:
+                i[0] = 'n'
+            if i[1] == firstIndex:
+                i[1] = 'n'
+            if i[0] == secondIndex:
+                i[0] = 'm'
+            if i[1] == secondIndex:
+                i[1] = 'm'
+
+        for i in edgeListTwo:
+            if i[0] == 'n':
+                i[0] = secondIndex
+            if i[1] == 'n':
+                i[1] = secondIndex
+            if i[0] == 'm':
+                i[0] = firstIndex
+            if i[1] == 'm':
+                i[1] = firstIndex #swapPair indices in edgeListTwo now swapped
+
             
 class Node:
     def __init__(self, degree, index):
@@ -179,6 +216,84 @@ class Signature:
         for i in self.adjList:
             i.print()
 
+    def g0Equivalent(self, edgeListOne, edgeListTwo):
+        #compare sorted list of all edges by degree, return true if identical (disregarding order) else false
+        degreeEdgeListOne = []
+        degreeEdgeListTwo = []
+        for i in edgeListOne:
+            degreeEdgeListOne.append([self.adjList[i[0]].degree, self.adjList[i[1]].degree])
+        for i in edgeListTwo:
+            degreeEdgeListTwo.append([self.adjList[i[0]].degree, self.adjList[i[1]].degree])
+        print("degEL1: ")
+        for i in degreeEdgeListOne:
+            print(i)
+        print("degEL2: ")
+        for i in degreeEdgeListTwo:
+            print(i)
+            
+        counterL1 = Counter(map(tuple, degreeEdgeListOne))  # Convert inner lists to tuples to make them hashable
+        counterL2 = Counter(map(tuple, degreeEdgeListTwo))
+        
+        # Check if every pair in l1 is present in l2 with the required count
+        for pair, count in counterL1.items():
+            if counterL2[pair] < count:
+                return False
+        return True
+          
+    def sortNodesByDegree(self):
+        #returns a list of all node groups (sorted by degree) with two or more members
+        nodeGroups = []
+        for i in range(len(self.sig)):
+            if self.sig[i] >= 2:
+                nodeGroups.append([])
+                for j in self.adjList:
+                    if j.degree == i + 1:
+                        nodeGroups[-1].append(j)
+        #for i in nodeGroups:
+        #    for j in i:
+        #        j.print()
+        #    print()
+        return nodeGroups
+        
+    def isomorphismTest(self, edgeListOne, edgeListTwo, swappablePairs):
+        #TODO: this implementation doesn't work for all cases. Worst case scenario, we'll have to check every permutation of nodes in each 
+        #equivalence group. Maybe we can analyze the approach we took to generating the edgelists and come up with something more efficient, though.
+        #test for isomorphism by attempting all applicable (grouped by degree) relabeling schemes of one swap (TODO:is this sufficient?)
+        #swap all swappable pairs in edgeListTwo and test for equivalence, return false otherwise
+        for swapPair in swappablePairs:
+            firstIndex = swapPair[0].index
+            secondIndex = swapPair[1].index
+            
+            edgeListTwo.swapIndices(firstIndex, secondIndex)
+            #for i in edgeListTwo:
+            #    if i[0] == firstIndex:
+            #        i[0] = 'n'
+            #    if i[1] == firstIndex:
+            #        i[1] = 'n'
+            #    if i[0] == secondIndex:
+            #        i[0] = 'm'
+            #    if i[1] == secondIndex:
+            #        i[1] = 'm'
+
+            #for i in edgeListTwo:
+            #    if i[0] == 'n':
+            #        i[0] = secondIndex
+            #    if i[1] == 'n':
+            #        i[1] = secondIndex
+            #    if i[0] == 'm':
+            #        i[0] = firstIndex
+            #    if i[1] == 'm':
+            #        i[1] = firstIndex #swapPair indices in edgeListTwo now swapped
+            
+            if edgeListTwo.sameListDifferentOrderCheck(edgeListOne): #if the two lists are identical disregarding order
+                return True
+            edgeListTwo.swapIndices(firstIndex, secondIndex) #swap back for a clean slate for other checks
+
+        return False #edgeListOne did not match any edgeListTwo after all applicable swaps
+        
+    def removeIsomorphicEdgeLists(self, edgelists):
+        return
+
     def genAllConfigs(self):
         workingSig = copy.deepcopy(self)
         workingList = copy.deepcopy(workingSig.adjList)
@@ -197,6 +312,11 @@ class Signature:
         for i in finalConfigSet:
             print("Final config set: ")
             i.print()
+            
+        nodeGroups = self.sortNodesByDegree()
+        genSwappablePairs(nodeGroups)
+        print("edgeLists[0] G0 Equiv to edgelists[1]:")
+        print(self.g0Equivalent(finalConfigSet[0].edgeList, finalConfigSet[1].edgeList))
         #while(True):    
         #    workingNode = workingList.pop(0)
         #    nbrhdCombinations = genNbrCombinations(workingList, workingNode.numUnfilledNbrs())
