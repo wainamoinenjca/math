@@ -1,4 +1,5 @@
 import itertools
+from itertools import permutations, product
 import copy
 from collections import Counter
 
@@ -84,19 +85,47 @@ def removeEdgeListCopies(edgeLists):
     
     return edgeLists
     
-def genSwappablePairs(groupList):
+def genSwappablePairs(groupList): #depreciated, remove
     pairCombinationsByDegree = []
     for i in groupList:
         swapPairs = itertools.combinations(i, 2)
         pairCombinationsByDegree.append(swapPairs)
 
-    for i in pairCombinationsByDegree:
-        for j in i:
-            for k in j:
-                k.print()
-            print()
+    #for i in pairCombinationsByDegree:
+        #for j in i:
+            #for k in j:
+                #k.print()
+            #print()
             
     return pairCombinationsByDegree
+    
+def groupedPermutations(groups):
+    # Generate permutations for each group
+    groupPermutations = [list(permutations(group)) for group in groups]
+    
+    # Combine permutations from different groups
+    combinedResults = []
+    for combination in product(*groupPermutations):
+        # Flatten and concatenate the combination of tuples
+        combinedList = [item for perm in combination for item in perm]
+        combinedResults.append(combinedList)
+    
+    return combinedResults
+
+def filterEdgeListByPermutation(edgeList, permutation):
+    # Create a mapping from original indices to permutation values
+    indexMap = {i: permutation[i] for i in range(len(permutation))}
+    
+    # Apply the mapping to each edge
+    transformedEdgeList = [[indexMap[u], indexMap[v]] for u, v in edgeList]
+    
+    for i in transformedEdgeList:
+        if i[0] > i[1]:
+            ph = i[0]
+            i[0] = i[1]
+            i[1] = ph
+            
+    return transformedEdgeList    
     
 class edgeList:
     def __init__(self, edges):
@@ -111,6 +140,7 @@ class edgeList:
         return hash(tuple(self.edgeList))
 
     def sameListDifferentOrderCheck(self, other):
+    #since we are working with simple graphs, we only need to check for inclusion since all edges will be unique
         selfCopy = copy.deepcopy(self.edgeList)
         otherCopy = copy.deepcopy(other.edgeList)
         differences = [i for i in selfCopy if i not in otherCopy]
@@ -243,12 +273,12 @@ class Signature:
     def sortNodesByDegree(self):
         #returns a list of all node groups (sorted by degree) with two or more members
         nodeGroups = []
-        for i in range(len(self.sig)):
-            if self.sig[i] >= 2:
-                nodeGroups.append([])
-                for j in self.adjList:
-                    if j.degree == i + 1:
-                        nodeGroups[-1].append(j)
+        for i in range(len(self.sig) - 1, -1, -1):
+            #if self.sig[i] >= 2: #TODO: probably remove this check so we can get the full string permutation
+            nodeGroups.append([])
+            for j in self.adjList:
+                if j.degree == i + 1:
+                    nodeGroups[-1].append(j.index) #TODO: Change to append indices instead of nodes themselves
         #for i in nodeGroups:
         #    for j in i:
         #        j.print()
@@ -314,9 +344,31 @@ class Signature:
             i.print()
             
         nodeGroups = self.sortNodesByDegree()
-        genSwappablePairs(nodeGroups)
-        print("edgeLists[0] G0 Equiv to edgelists[1]:")
-        print(self.g0Equivalent(finalConfigSet[0].edgeList, finalConfigSet[1].edgeList))
+        gp = groupedPermutations(nodeGroups)
+        filteredEdgeLists = []
+        for perm in gp:
+            filteredEdgeLists.append(filterEdgeListByPermutation(finalConfigSet[1].edgeList, perm))
+        for i in filteredEdgeLists:
+            print(finalConfigSet[0].sameListDifferentOrderCheck(edgeList(i)))
+        #1/20/25 11:35 just got it working for [1,3,1], now I need to make it programmatic
+        #and test all known sigs then we will know it actually works
+        #first group all configs by g0 eq classes, then for all configs in the same eq class,
+        #generate permutationList, filter by permutationList, and use sameListDifferentOrderCheck
+        #remove any cases where true is returned and we will be left with all non-isomorphic configs of a given sig
+        #a significant contribution to mathematics. Listened to Blue Train as I reached the final steps
+        
+        #for i in gp:
+        #    print(i)
+        #print("node groups:")
+        #for i in nodeGroups:
+        #    for j in i:
+        #        print(j)
+        #    print()
+        #print(nodeGroups)
+        
+        #genSwappablePairs(nodeGroups) #depreciated
+        #print("edgeLists[0] G0 Equiv to edgelists[1]:")
+        #print(self.g0Equivalent(finalConfigSet[0].edgeList, finalConfigSet[1].edgeList))
         #while(True):    
         #    workingNode = workingList.pop(0)
         #    nbrhdCombinations = genNbrCombinations(workingList, workingNode.numUnfilledNbrs())
@@ -611,4 +663,4 @@ test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
 #test.genConfigs(0)
 #test.genAllConfigs()
 #test2.genAllConfigs()
-test3.genAllConfigs()
+test2.genAllConfigs()
