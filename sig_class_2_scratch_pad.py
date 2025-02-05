@@ -351,7 +351,7 @@ class Signature:
         workingList = copy.deepcopy(workingSig.adjList)
         completeCnxnLists = []
 
-        retVals = self.iterate2(workingSig, [], [], 0)
+        retVals = self.iterate2(workingSig, [], [], 0, False)
         finalConfigSet = []
         for i in retVals[2]:
             #print("final configs, ", i)
@@ -361,15 +361,15 @@ class Signature:
         finalConfigSet = removeEdgeListCopies(finalConfigSet)
         #finalConfigSet = set(finalConfigSet)  
         
-        for i in finalConfigSet:
-            print("Final config set: ")
-            i.print()
+        #for i in finalConfigSet:
+            #print("Final config set: ")
+            #i.print()
         
         finalConfigSet = self.removeIsomorphicEdgeLists(finalConfigSet)
-        print("Post Iso EL removal:")
-        for i in finalConfigSet:
-            i.print()
-         
+        #print("Post ismorphic edgelist removal:")
+        #for i in finalConfigSet:
+        #    i.print()
+        print(self.sig, ": ", len(finalConfigSet)) 
         #nodeGroups = self.sortNodesByDegree()
         #gp = groupedPermutations(nodeGroups)
         #filteredEdgeLists = []
@@ -426,12 +426,12 @@ class Signature:
                 #print()
                 return workingNode.index
      
-    def iterate2(self, workingSig, cnxnList, configList, level):
+    def iterate2(self, workingSig, cnxnList, configList, level, debug):
         level = level + 1
-        print("Entered iterate2, level = ", level)
-        print("configList = ")
+        if debug: print("Entered iterate2, level = ", level)
+        if debug: print("configList = ")
         for i in configList:
-            print(i)
+            if debug: print(i)
         #depth first structure, paths are followed to the end until complete or disconnected, 
         #then the next branching paths one level higher are checked
         graphComplete = False #turns true if all nodes in graph are connected
@@ -450,14 +450,14 @@ class Signature:
         #        j.print()
         #    print()
         for comb in nbrhdCombinations:
-            print("wn = ")
-            wn.print()
-            print("testing combination:")
+            if debug: print("wn = ")
+            if debug: wn.print()
+            if debug: print("testing combination:")
             for i in comb:
-                i.print()
-            print("current workingSig")
+                if debug: i.print()
+            if debug: print("current workingSig")
             for i in workingSig.adjList:
-                i.print()
+                if debug: i.print()
             if comb == nbrhdCombinations[-1]: finalPotentialNbrhd = True 
             for node in comb:
                 connect(workingSig, wn, node) #connect working node with nodes in current potential nbrhd combination
@@ -466,19 +466,19 @@ class Signature:
             dcdGroup = workingSig.disconnectedGroupCheck()
             if graphComplete:
                 if finalPotentialNbrhd == True: #if graph is complete and all neighborhoods on this level have been checked
-                    print("FPN = True")
+                    if debug: print("FPN = True")
                     workingSig.deleteEdgeList(workingSig, crc) #remove current round connections from group
                     return[True, cnxnList + crc, currentLevelConfigList] #return true, current config, previous valid configs from this level
                 else: #if current graph complete but there exist more potential neighborhoods on this level to check
                     currentLevelConfigList.append(list(cnxnList + crc)) #add config to final list of valid configs
                     #configList.append(list(cnxnList + crc))
-                    print("in graph complete, nbrhds remaining, crc = ")
+                    if debug: print("in graph complete, nbrhds remaining, crc = ")
                     for i in crc:
-                        print(i)
-                    print("Current workingSig = ")
+                        if debug: print(i)
+                    if debug: print("Current workingSig = ")
                     workingSig.debug()
                     workingSig.deleteEdgeList(workingSig, crc) #remove current round connections from group
-                    print("post delete edgeList")
+                    if debug: print("post delete edgeList")
                     workingSig.debug()
                     #crc = [] #reset currentRoundConnections after deleting from group
             if dcdGroup: 
@@ -489,12 +489,12 @@ class Signature:
                     workingSig.deleteEdgeList(workingSig, crc) #remove current round connections from group
                     crc = [] #reset currentRoundConnections after deleting from group
             if not graphComplete and not dcdGroup: #if current path is not invalid and graph incomplete
-                retValues = workingSig.iterate2(workingSig, cnxnList + crc, configList + currentLevelConfigList, level)
-                print("Returned to level ", level)
-                print("retValues = ", retValues)
-                print("len retValues = ", len(retValues))
+                retValues = workingSig.iterate2(workingSig, cnxnList + crc, configList + currentLevelConfigList, level, debug)
+                if debug: print("Returned to level ", level)
+                if debug: print("retValues = ", retValues)
+                if debug: print("len retValues = ", len(retValues))
                 for i in retValues:
-                    print("RetValues = ", i)
+                    if debug: print("RetValues = ", i)
                 retGraphValid = retValues[0]
                 retCnxnList = retValues[1]
                 retConfigList = retValues[2]
@@ -503,18 +503,18 @@ class Signature:
                 configList = configList + retConfigList #this was the hangup to get all configs returned. Now there are duplicates of valid figs
                 
                 if finalPotentialNbrhd == False: #if there are more neighborhoods to check on this level
-                    print("No more potenialNbrhds, crc = ")
+                    if debug: print("No more potenialNbrhds, crc = ")
                     for i in crc:
-                        print(i)
-                    print("cnxnList = ")
+                        if debug: print(i)
+                    if debug: print("cnxnList = ")
                     for i in cnxnList:
-                        print(i)
-                    print("retcnxnList = ")
+                        if debug: print(i)
+                    if debug: print("retcnxnList = ")
                     for i in retCnxnList:
-                        print(i)
-                    print("configList = ")
+                        if debug: print(i)
+                    if debug: print("configList = ")
                     for i in configList:
-                        print(i)
+                        if debug: print(i)
                     workingSig.deleteEdgeList(workingSig, crc) #undo currentRoundConnections to test other potential nbrhds
                     crc = [] #reset CurrentRoundConnections to test other neighborhoods
                     if retGraphValid == True: 
@@ -522,10 +522,10 @@ class Signature:
                 elif finalPotentialNbrhd == True:#if there are no more potential neighborhoods on this level
                     configList = configList + retConfigList
                     workingSig.deleteEdgeList(workingSig, crc) #undo currentRoundConnections to test other potential nbrhds
-            print("END of current NbrhdCombination")
+            if debug: print("END of current NbrhdCombination")
         #for i in configList:
             #print("final ConfigList = ", i)
-        print("END of iterate2")
+        if debug: print("END of iterate2")
         return[False, cnxnList + crc, configList]
        
             
@@ -695,4 +695,7 @@ test4 = Signature([0,0,6])
 #test.genConfigs(0)
 #test.genAllConfigs()
 #test2.genAllConfigs()
-test4.genAllConfigs()
+#test4.genAllConfigs()
+for i in testSigs:
+    testSig = Signature(i)
+    testSig.genAllConfigs()
