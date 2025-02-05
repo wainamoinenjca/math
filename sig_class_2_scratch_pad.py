@@ -119,6 +119,7 @@ def filterEdgeListByPermutation(edgeList, permutation):
     # Apply the mapping to each edge
     transformedEdgeList = [[indexMap[u], indexMap[v]] for u, v in edgeList]
     
+    #resort edges to be from lower index to higher (purely for ease of later comparison, no effect on results otherwise)
     for i in transformedEdgeList:
         if i[0] > i[1]:
             ph = i[0]
@@ -127,7 +128,7 @@ def filterEdgeListByPermutation(edgeList, permutation):
             
     return transformedEdgeList    
     
-class edgeList:
+class EdgeList:
     def __init__(self, edges):
         self.edgeList = edges
         
@@ -143,7 +144,7 @@ class edgeList:
     #since we are working with simple graphs, we only need to check for inclusion since all edges will be unique
         selfCopy = copy.deepcopy(self.edgeList)
         otherCopy = copy.deepcopy(other.edgeList)
-        differences = [i for i in selfCopy if i not in otherCopy]
+        differences = [i for i in selfCopy if i not in otherCopy] #only checking for inclusion, not number of incidents, see above comment
         #for i in differences:
         #    print("diffs: ", i)
                     
@@ -278,7 +279,7 @@ class Signature:
             nodeGroups.append([])
             for j in self.adjList:
                 if j.degree == i + 1:
-                    nodeGroups[-1].append(j.index) #TODO: Change to append indices instead of nodes themselves
+                    nodeGroups[-1].append(j.index) #TODO: Change to append indices instead of nodes themselves #TODO is done, I think
         #for i in nodeGroups:
         #    for j in i:
         #        j.print()
@@ -321,8 +322,29 @@ class Signature:
 
         return False #edgeListOne did not match any edgeListTwo after all applicable swaps
         
-    def removeIsomorphicEdgeLists(self, edgelists):
-        return
+    def removeIsomorphicEdgeLists(self, masterEdgeLists):
+        #TODO: begin here
+        #check seems to work, now we need to filter out one of final configs for which true is returned in above check since they're isomorphic
+        #need to check every edgeList against every succeeding edgelist in the list of edgelists (var called edgelists)
+        #use list comprehension recipie found in below line
+        #    edgeLists = [edgeLists[i] for i in range(len(edgeLists)) if not remList[i]]
+        #remember to break and flag for removal if SLDOC returns true for any permutation 
+        #everything is getting removed upon running, I need to add a check to ensure I'm not comparing a list to itself
+        remList = [False] * (len(masterEdgeLists))
+        nodeGroups = self.sortNodesByDegree()
+        gp = groupedPermutations(nodeGroups)
+        for i in range(len(masterEdgeLists)):
+            filteredEdgeLists = []
+            for perm in gp:
+                filteredEdgeLists.append(filterEdgeListByPermutation(masterEdgeLists[i].edgeList, perm))
+            for j in filteredEdgeLists:
+                for k in range(i + 1, len(masterEdgeLists)): #added the +1 to the i so it doesn't compare a list to itself
+                    if masterEdgeLists[k].sameListDifferentOrderCheck(EdgeList(j)):
+                        remList[k] = True
+                        
+        finalEdgeLists = [masterEdgeLists[i] for i in range(len(masterEdgeLists)) if not remList[i]]
+
+        return finalEdgeLists
 
     def genAllConfigs(self):
         workingSig = copy.deepcopy(self)
@@ -333,7 +355,7 @@ class Signature:
         finalConfigSet = []
         for i in retVals[2]:
             #print("final configs, ", i)
-            finalConfigSet.append(edgeList(i))
+            finalConfigSet.append(EdgeList(i))
             #finalConfigSet.append(i)
                     
         finalConfigSet = removeEdgeListCopies(finalConfigSet)
@@ -342,14 +364,22 @@ class Signature:
         for i in finalConfigSet:
             print("Final config set: ")
             i.print()
-            
-        nodeGroups = self.sortNodesByDegree()
-        gp = groupedPermutations(nodeGroups)
-        filteredEdgeLists = []
-        for perm in gp:
-            filteredEdgeLists.append(filterEdgeListByPermutation(finalConfigSet[1].edgeList, perm))
-        for i in filteredEdgeLists:
-            print(finalConfigSet[0].sameListDifferentOrderCheck(edgeList(i)))
+        
+        finalConfigSet = self.removeIsomorphicEdgeLists(finalConfigSet)
+        print("Post Iso EL removal:")
+        for i in finalConfigSet:
+            i.print()
+         
+        #nodeGroups = self.sortNodesByDegree()
+        #gp = groupedPermutations(nodeGroups)
+        #filteredEdgeLists = []
+        #for perm in gp:
+        #    filteredEdgeLists.append(filterEdgeListByPermutation(finalConfigSet[1].edgeList, perm))
+        #for i in filteredEdgeLists:
+        #    print(finalConfigSet[0].sameListDifferentOrderCheck(EdgeList(i)))
+        
+        #check seems to work, now we need to filter out one of final configs for which true is returned in above check since they're isomorphic
+        
         #1/20/25 11:35 just got it working for [1,3,1], now I need to make it programmatic
         #and test all known sigs then we will know it actually works
         #first group all configs by g0 eq classes, then for all configs in the same eq class,
@@ -647,10 +677,12 @@ class Signature:
                     print(i)
                 completeCnxnLists.append(list(cnxnList))
                 cnxnList = []
-
+testSigs = [[2],[2,1],[0,3],[2,2],[0,4],[1,2,1],[3,0,1],[0,2,2],[0,0,4],[2,3],[0,5],[3,1,1],[4,0,0,1],[2,1,2],[1,3,1],[2,2,0,1],[1,2,1,1],[0,4,0,1],[1,1,3],[0,3,2],[0,3,0,2],[1,0,3,1],[0,2,2,1],[0,1,0,4],[0,1,2,2],[0,0,4,1],[0,0,2,3],[0,0,0,5]]
+#above are all sigs of graphlets from 2 to 5 nodes for testing purposes. All should return one config exept for [1,3,1] and [0,3,2]
 test = Signature([0,3,2]) #works
 test2 = Signature([1,3,1]) #works but returns two isomorphic configs
 test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
+test4 = Signature([0,0,6])
 #connect(test, test.adjList[0],test.adjList[2])
 #for i in test.adjList:
 #    i.print()
@@ -663,4 +695,4 @@ test3 = Signature([0,4,2])#connect(test, test.adjList[0],test.adjList[1])
 #test.genConfigs(0)
 #test.genAllConfigs()
 #test2.genAllConfigs()
-test2.genAllConfigs()
+test4.genAllConfigs()
