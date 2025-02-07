@@ -400,7 +400,7 @@ class Signature:
         workingList = copy.deepcopy(workingSig.adjList)
         completeCnxnLists = []
 
-        retVals = self.iterate2(workingSig, [], [], 0, True)
+        retVals = self.iterate2(workingSig, [], [], 0, False)
         finalConfigSet = []
         for i in retVals[2]:
             #print("final configs, ", i)
@@ -413,12 +413,12 @@ class Signature:
         #for i in finalConfigSet:
             #print("Final config set: ")
             #i.print()
-        
-        finalConfigSet = self.removeIsomorphicEdgeLists(finalConfigSet)
+        if len(finalConfigSet) > 1:
+            finalConfigSet = self.removeIsomorphicEdgeLists(finalConfigSet)
         #print("Post ismorphic edgelist removal:")
-        #for i in finalConfigSet:
-        #    i.print()
         print(self.sig, ": ", len(finalConfigSet)) 
+        for i in finalConfigSet:
+            i.print()
         #nodeGroups = self.sortNodesByDegree()
         #gp = groupedPermutations(nodeGroups)
         #filteredEdgeLists = []
@@ -512,12 +512,17 @@ class Signature:
                 connect(workingSig, wn, node) #connect working node with nodes in current potential nbrhd combination
                 crc.append([wn.index, node.index]) #add most recently created edge to current round connections
             graphComplete = workingSig.completionCheck()
+            if debug: print("graph full?:", graphComplete)
             if debug: print("pre DCGCheck:")
             if debug: workingSig.debug()
             dcdGroup = workingSig.disconnectedGroupCheck()
             if graphComplete:
                 if finalPotentialNbrhd == True: #if graph is complete and all neighborhoods on this level have been checked
                     if debug: print("FPN = True")
+                    currentLevelConfigList += [cnxnList + crc]
+                    if debug:
+                        for i in currentLevelConfigList:
+                            print(i)
                     workingSig.deleteEdgeList(workingSig, crc) #remove current round connections from group
                     return[True, cnxnList + crc, currentLevelConfigList] #return true, current config, previous valid configs from this level
                 else: #if current graph complete but there exist more potential neighborhoods on this level to check
@@ -728,7 +733,7 @@ class Signature:
                     print(i)
                 completeCnxnLists.append(list(cnxnList))
                 cnxnList = []
-testSigs = [[2],[2,1],[0,3],[2,2],[0,4],[1,2,1],[3,0,1],[0,2,2],[0,0,4],[2,3],[0,5],[3,1,1],[4,0,0,1],[2,1,2],[1,3,1],[2,2,0,1],[1,2,1,1],[0,4,0,1],[1,1,3],[0,3,2],[0,3,0,2],[1,0,3,1],[0,2,2,1],[0,1,0,4],[0,1,2,2],[0,0,4,1],[0,0,2,3],[0,0,0,5]]
+testSigs = [[2],[2,1],[0,3],[2,2],[0,4],[1,2,1],[3,0,1],[0,2,2],[0,0,4],[2,3],[0,5],[3,1,1],[4,0,0,1],[2,1,2],[1,3,1],[2,2,0,1],[1,2,1,1],[0,4,0,1],[1,1,3],[0,3,2],[0,3,0,2],[1,0,3,1],[0,2,2,1],[0,1,4],[0,1,2,2],[0,0,4,1],[0,0,2,3],[0,0,0,5],[0,4,2],[0,0,6]]
 #above are all sigs of graphlets from 2 to 5 nodes for testing purposes. All should return one config exept for [1,3,1] and [0,3,2]
 test = Signature([0,3,2]) #works
 test2 = Signature([1,3,1]) #works but returns two isomorphic configs
@@ -749,11 +754,11 @@ test4 = Signature([0,0,6])
 #test4.genAllConfigs()
 #test5 = Signature([2,3])
 #test5.genAllConfigs()
-test6 = Signature([3,0,1])
-test6.genAllConfigs()
-#for i in testSigs:
-#    testSig = Signature(i)
-#    testSig.genAllConfigs()
+#test6 = Signature([3,0,1])
+#test6.genAllConfigs()
+for i in testSigs:
+    testSig = Signature(i)
+    testSig.genAllConfigs()
 #above fails on the following sigs: [2], [2,1], [3,0,1], [2,3], [4,0,0,1], [0,1,0,4] (though the last is probably a typo with the sig def
 #all failures reporting 0 configs except for [2,3] which reports 2 configs
 #todo: run fail cases with debug on to see what's happening and fix it. Almost there, and the trickiest configs are working properly.
