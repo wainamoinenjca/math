@@ -231,8 +231,57 @@ class Signature:
         #for i in potentialNeighbors:
         #    i.print()
         return potentialNeighbors
+        
+    def currentGroupOpenEdges(self):
+        #TODO: bug: for some reason, the neighborhood printed within this fn doesn't match WorkingNode's neighborhood as printed just before the call
+        #start node has its neighbors, but the neighbors don't include startnode. Very strange. 
+        #print("inCGOE, selfSig = ")
+        #self.debug()
+        currentGroup = []
+        startNode = self.adjList[0]
+        currentGroup.append(startNode)
+        for i in startNode.neighbors:
+            currentGroup.append(self.adjList[i.index])
+            
+        #print("Start node Neighbors = ",startNode.neighbors[1])
+            
+        for i in currentGroup:
+            for j in i.neighbors:
+                #print("j = ")
+                #j.print()
+                included = False
+                for k in currentGroup:
+                    if k.index == j.index:
+                        included = True
+                if included == False:
+                    currentGroup.append(self.adjList[j.index])
+                #if j not in currentGroup: #problem is probably here due to overloaded node equals comparitor, check index instead
+                #    currentGroup.append(self.adjList[j.index]) #not sure if this works as intended, make sure it checks all neighbors of sn's nbrs recursively
+        openEdges = 0
+        #print("inCGOE")
+        for i in currentGroup:
+            #i.print()
+            #print("open edges:", i.numUnfilledNbrs())
+            openEdges += i.numUnfilledNbrs()
+            
+        #print("last inCGOE")
+        #self.debug()
+        return openEdges
     
     def disconnectedGroupCheck(self): #untested
+        #TODO: bug: doesn't actually check for disconnected groups, returns true for a dc'd triangle[2,2,2] and g0[1,1] for [2,3]
+        #if currentGroupOpenEdges = 0 and unfilledNodes > 0 then return True
+        #currentGroup: start with 0, add all neighbors, add all neighbors of neighbors, sum numUnfilledNbrs for each in list
+        #print("entered DGC: selfSig = ")
+        #self.debug()
+        workingGroupOpenEdges = self.currentGroupOpenEdges()
+        totalOpenEdges = 0
+        for i in self.adjList:
+            totalOpenEdges += i.numUnfilledNbrs()
+        if workingGroupOpenEdges == 0 and totalOpenEdges > 0:
+            #print("DINGDINGDINGDING")
+            return True
+        #print("WGOE: ", workingGroupOpenEdges)
         check = False
         for i in self.adjList:
             #print("IN DCGROUPCHECK, i.ind = ", i.index, "#POTNBRS = ", len(self.potentialNeighbors(i)), "UNFILLEDNBRS = ", i.numUnfilledNbrs())
@@ -351,7 +400,7 @@ class Signature:
         workingList = copy.deepcopy(workingSig.adjList)
         completeCnxnLists = []
 
-        retVals = self.iterate2(workingSig, [], [], 0, False)
+        retVals = self.iterate2(workingSig, [], [], 0, True)
         finalConfigSet = []
         for i in retVals[2]:
             #print("final configs, ", i)
@@ -463,6 +512,8 @@ class Signature:
                 connect(workingSig, wn, node) #connect working node with nodes in current potential nbrhd combination
                 crc.append([wn.index, node.index]) #add most recently created edge to current round connections
             graphComplete = workingSig.completionCheck()
+            if debug: print("pre DCGCheck:")
+            if debug: workingSig.debug()
             dcdGroup = workingSig.disconnectedGroupCheck()
             if graphComplete:
                 if finalPotentialNbrhd == True: #if graph is complete and all neighborhoods on this level have been checked
@@ -696,6 +747,14 @@ test4 = Signature([0,0,6])
 #test.genAllConfigs()
 #test2.genAllConfigs()
 #test4.genAllConfigs()
-for i in testSigs:
-    testSig = Signature(i)
-    testSig.genAllConfigs()
+#test5 = Signature([2,3])
+#test5.genAllConfigs()
+test6 = Signature([3,0,1])
+test6.genAllConfigs()
+#for i in testSigs:
+#    testSig = Signature(i)
+#    testSig.genAllConfigs()
+#above fails on the following sigs: [2], [2,1], [3,0,1], [2,3], [4,0,0,1], [0,1,0,4] (though the last is probably a typo with the sig def
+#all failures reporting 0 configs except for [2,3] which reports 2 configs
+#todo: run fail cases with debug on to see what's happening and fix it. Almost there, and the trickiest configs are working properly.
+#probably just a few edge cases (seemingly involving max nodes) unaccounted for
