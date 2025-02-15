@@ -179,7 +179,7 @@ class Node:
     def __init__(self, degree, index):
         self.degree = degree
         self.neighbors = []
-        self.index = index
+        self.index = index 
         
     def __eq__(self, other):
         return self.degree == other.degree and self.neighbors == other.neighbors
@@ -204,6 +204,7 @@ class Signature:
         self.numEdges = edgeCalc(sig)
         self.numNodes = sum(sig)
         self.adjList = createAdjList(sig)
+        self.configs = [] #expects edgelists of form (x, y) where x and y are specific indices of nodes to be cnctd
         
     def completionCheck(self):
         check = True
@@ -268,7 +269,7 @@ class Signature:
         #self.debug()
         return openEdges
     
-    def disconnectedGroupCheck(self): #untested
+    def disconnectedGroupCheck(self): 
         #TODO: bug: doesn't actually check for disconnected groups, returns true for a dc'd triangle[2,2,2] and g0[1,1] for [2,3]
         #if currentGroupOpenEdges = 0 and unfilledNodes > 0 then return True
         #currentGroup: start with 0, add all neighbors, add all neighbors of neighbors, sum numUnfilledNbrs for each in list
@@ -415,10 +416,13 @@ class Signature:
             #i.print()
         if len(finalConfigSet) > 1:
             finalConfigSet = self.removeIsomorphicEdgeLists(finalConfigSet)
+        for i in finalConfigSet:
+            self.configs.append(i)
         #print("Post ismorphic edgelist removal:")
         print(self.sig, ": ", len(finalConfigSet)) 
-        for i in finalConfigSet:
-            i.print()
+        #for i in finalConfigSet:
+            #i.print() #used to verify configs generated, all pass as of 2/6/25
+        
         #nodeGroups = self.sortNodesByDegree()
         #gp = groupedPermutations(nodeGroups)
         #filteredEdgeLists = []
@@ -733,6 +737,143 @@ class Signature:
                     print(i)
                 completeCnxnLists.append(list(cnxnList))
                 cnxnList = []
+                
+    def totalPotentialConnectablePairs(self):
+        pot = []
+        for i in range(0, len(self.sig)): #from index = 0 (deg 1 nodes) to index = numNodes-1
+            if i == sum(self.sig) - 2:
+            #we discard fully connected nodes which have an index val of numNodes - 1 (equals sum(self.sig) - 2)
+                break
+            if self.sig[i] > 0: #we discard index values with 0 nodes because no nodes of that connectivity exist to connect
+                for j in range(0, self.sig[i]): #allows for same index connections such as (1,1), (2,2), etc.
+                    pot.append(i + 1) # i + 1 because indices are zero indexed, the actual connectivity of those nodes is the index + 1
+        firstPassCombinations = itertools.combinations(pot, 2) #2 because edges have two ends
+        secondPassCombinations = set(firstPassCombinations)
+        #for i in secondPassCombinations:
+        #    print(i)
+        return secondPassCombinations
+        
+    def loadAdjFromConfig(self, edgeList):
+    #assumes edgeList is a valid config
+        self.adjList = createAdjList(self.sig) #clear current adjList
+        for i in edgeList:
+            connect(self, self.adjList[i[0]], self.adjList[i[1]])
+        
+    def findConnectablePairs(self):
+        #TODO: add following heuristics: complete graphs -> no CP, 
+        # [0...,n] nIndex < numNodes - 1 (i.e. incomplete graphs of single node degree) -> CP = nIndex, nIndex ([0,4] -> cp = (2,2)
+        self.loadAdjFromConfig(self.configs[0].edgeList)
+        potPairs = list(self.totalPotentialConnectablePairs())
+        potPairBools = [[i, False] for i in potPairs]
+        xNodes = []
+        yNodes = []
+        xyDisconnected = True
+        for pair in potPairs:
+            for config in self.configs:
+                self.loadAdjFromConfig(config.edgeList)
+                #print("Config changed, new config = ")
+                #self.debug()
+                xNodes = [i for i in self.adjList if i.degree == pair[0]]
+                yNodes = [i for i in self.adjList if i.degree == pair[1]]
+                for xNode in xNodes:
+                    for yNode in yNodes:
+                        if xNode.index != yNode.index: #we skip evaluating instances where x and y are the same nodes
+                            #print("comparing:")
+                            #xNode.print()
+                            #yNode.print()
+                            xyDisconnected = True #assume true and invalidate otherwise
+                            for nbr in xNode.neighbors:
+                                #print("Neighbor comparison: nbr.index = ", nbr.index, "yNode.index = ", yNode.index)
+                                if nbr.index == yNode.index: #if one of x's neighbors shares y's index they they are connected
+                                    xyDisconnected = False
+                            if xyDisconnected == True:
+                                #print("concluding True", pair)
+                                for entry in potPairBools:
+                                    if entry[0] == pair:
+                                        entry[1] = True
+                                break                   
+                        if xyDisconnected == True:
+                            break
+                if xyDisconnected == True:
+                    break
+                else:
+                    #print("concluding False", pair)  #if xyDC'd has never been true by the end of all configs
+                    for entry in potPairBools:      #then nodes of deg x and deg y are implicitly connected
+                        if entry[0] == pair:
+                            entry[1] = entry[1] or False #accoutns for cases when final check returned false after earlier returned true
+        #for i in potPairs:
+            #print(i)
+        #for i in potPairBools:
+            #print(i)
+        connectablePairs = [potPairs[i] for i in range(len(potPairs)) if potPairBools[i][1] == True] #list comprehension to remove false potPairs 
+        return connectablePairs
+                            
+    #if xyDisconnected is False, then for that configuration, x, and y, validPair is false. If any instance of a given config, x, and y 
+    #show that xyDisconnected is True, then the pairbool for that pair should be true, no more search is needed for that entire pair
+    #so we should be able to break out until the next Pair is being evaluated
+    
+    def findConnectablePairs2(self):
+    #assumes all valid configs are loaded into self.configs (i.e. genAllConfigs() has been run on the same sig
+        self.loadAdjFromConfig(self.configs[0].edgeList)
+        potPairs = list(self.totalPotentialConnectablePairs())
+        print("potPairs = ", potPairs)
+        potPairBools = []
+        for pair in potPairs:
+            print("currentPair = ", pair)
+            validPair = False
+            xNodes = []
+            yNodes = []
+            for i in self.adjList:
+                if i.degree == pair[0]:
+                    xNodes.append(i)
+                if i.degree == pair[1]:
+                    yNodes.append(i)
+            print("xNodes:")
+            for i in xNodes:
+                i.print()
+            print("yNodes:")
+            for i in yNodes:
+                i.print()
+            for config in self.configs:
+                #config.print()
+                self.loadAdjFromConfig(config.edgeList)
+                self.debug()
+                for xNode in xNodes:
+                    print("currentXNode = ", xNode.index)
+                    for yNode in yNodes:
+                        #validPair = validPair or False
+                        print("currentYNode = ", yNode.index)
+                        if xNode.index == yNode.index: #for cases where potPair[0] = potPair[1] we ignore comparisons of nodes to themselves (since they are 
+                        #both xNodes and yNodes, they will be compared to themselves)
+                            print("indices match, xNode.index = ", xNode.index, "yNode.index = ", yNode.index)
+                            
+                        else:
+                            print("indices do not match, xNode.index = ", xNode.index, "numXNbrs = ", len(xNode.neighbors), "yNode = ", yNode.index)
+                            yInXNbrhd = False
+                            for nbr in xNode.neighbors:
+                                print("currentXNode = ", xNode.index, "yNode = ", yNode.index)
+                                print("Comparing:", nbr.index, " and", yNode.index)
+                                if nbr.index == yNode.index:
+                                    yInXNbrhd = True
+                                    print("VALID PAIR FOUND: ", xNode.index, ", ", yNode.index)
+                            if yInXNbrhd == False:
+                                validPair = True
+                            #yNode.index not in self.adjList[xNode.index].neighbors:
+                            #this means there is a node of degree = pair[1] not in the neighborhood of a node of degree = pair[0]
+                            #therefore they are a valid connectable pair because there exists at least one config s.t. a node of deg = pair[0] 
+                            #isn't already (and necessarily) connected to all nodes of deg = pair[1]
+                            #validPair = True
+            potPairBools.append(validPair)
+        print("potPairs:")
+        for i in potPairs:
+            print(i)
+        print("potPairBools:")
+        for i in potPairBools:
+            print(i)
+        connectablePairs = [potPairs[i] for i in range(len(potPairs)) if potPairBools[i]] #list comprehension to remove false potPairs 
+        return connectablePairs
+
+            
 testSigs = [[2],[2,1],[0,3],[2,2],[0,4],[1,2,1],[3,0,1],[0,2,2],[0,0,4],[2,3],[0,5],[3,1,1],[4,0,0,1],[2,1,2],[1,3,1],[2,2,0,1],[1,2,1,1],[0,4,0,1],[1,1,3],[0,3,2],[0,3,0,2],[1,0,3,1],[0,2,2,1],[0,1,4],[0,1,2,2],[0,0,4,1],[0,0,2,3],[0,0,0,5],[0,4,2],[0,0,6]]
 #above are all sigs of graphlets from 2 to 5 nodes for testing purposes. All should return one config exept for [1,3,1] and [0,3,2]
 test = Signature([0,3,2]) #works
@@ -758,8 +899,9 @@ test4 = Signature([0,0,6])
 #test6.genAllConfigs()
 for i in testSigs:
     testSig = Signature(i)
-    testSig.genAllConfigs()
-#above fails on the following sigs: [2], [2,1], [3,0,1], [2,3], [4,0,0,1], [0,1,0,4] (though the last is probably a typo with the sig def
-#all failures reporting 0 configs except for [2,3] which reports 2 configs
-#todo: run fail cases with debug on to see what's happening and fix it. Almost there, and the trickiest configs are working properly.
-#probably just a few edge cases (seemingly involving max nodes) unaccounted for
+    testSig.genAllConfigs() #all pass 2/6/2025 (2*6 = 2+0+2*5)
+    print(testSig.findConnectablePairs()) #all pass 2/14/25 (2*(1+4) = 2*5)
+#test5 = Signature([1,1,3])
+#test6 = Signature([3,1,1])
+#test6.genAllConfigs()
+#print (test6.findConnectablePairs())
